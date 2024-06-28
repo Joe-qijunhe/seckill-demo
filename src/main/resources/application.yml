@@ -26,7 +26,7 @@ spring:
       connection-test-query: SELECT 1
   data:
     redis:
-      host: 192.168.174.129
+      host: 192.168.44.128
       port: 6379
       database: 0
       timeout: 10000ms

@@ -63,12 +63,12 @@ public class Order implements Serializable {
     /**
      * 1 pc,2 android, 3 ios
      */
-    private Byte orderChannel;
+    private Integer orderChannel;
 
     /**
      * 订单状态，0新建未支付，1已支付，2已发货，3已收货，4已退货，5已完成
      */
-    private Byte status;
+    private Integer status;
 
     /**
      * 订单创建时间
