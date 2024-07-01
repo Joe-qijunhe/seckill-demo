@@ -39,17 +39,20 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     private ISeckillOrderService seckillOrderService;
 
     @Override
-    public Order secKill(User user, GoodsVo goodsVo) {
+    public Order secKill(User user, Long goodsId) {
         //秒杀商品表减库存
-        seckillGoodsService.update(new UpdateWrapper<SeckillGoods>().setSql("stock_count = " + "stock_count-1")
-                .eq("goods_id", goodsVo.getId())
+        boolean seckillGoodsResult = seckillGoodsService.update(new UpdateWrapper<SeckillGoods>().setSql("stock_count = " + "stock_count-1")
+                .eq("goods_id", goodsId)
                 .gt("stock_count", 0));
+        if (!seckillGoodsResult) {
+            return null;
+        }
         //生成订单
         Order order = new Order();
         order.setUserId(user.getId());
-        order.setGoodsId(goodsVo.getId());
+        order.setGoodsId(goodsId);
         order.setDeliveryAddrId(0L);
-        order.setGoodsName(goodsVo.getGoodsName());
+        order.setGoodsName("iphone12");
         order.setGoodsCount(1);
         order.setOrderChannel(1);
         order.setStatus(0);
@@ -59,7 +62,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         SeckillOrder tSeckillOrder = new SeckillOrder();
         tSeckillOrder.setUserId(user.getId());
         tSeckillOrder.setOrderId(order.getId());
-        tSeckillOrder.setGoodsId(goodsVo.getId());
+        tSeckillOrder.setGoodsId(goodsId);
         seckillOrderService.save(tSeckillOrder);
         return order;
     }

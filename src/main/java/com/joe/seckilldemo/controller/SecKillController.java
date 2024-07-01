@@ -31,21 +31,9 @@ public class SecKillController {
             return "login";
         }
         model.addAttribute("user", user);
-        GoodsVo goodsVo = goodsService.findGoodsVoByGoodsId(goodsId);
-        //判断库存
-        if (goodsVo == null || goodsVo.getStockCount() < 1) {
-            model.addAttribute("errmsg", RespBeanEnum.EMPTY_STOCK.getMessage());
-            return "secKillFail";
-        }
-        //判断是否重复抢购
-        SeckillOrder seckillOrder = seckillOrderService.getOne(new QueryWrapper<SeckillOrder>().eq("user_id", user.getId()).eq("goods_id", goodsId));
-        if (seckillOrder != null) {
-            model.addAttribute("errmsg", RespBeanEnum.REPEATE_ERROR.getMessage());
-            return "secKillFail";
-        }
-        Order order = orderService.secKill(user, goodsVo);
+        Order order = orderService.secKill(user, goodsId);
         model.addAttribute("order", order);
-        model.addAttribute("goods", goodsVo);
+        model.addAttribute("goods", goodsService.findGoodsVoByGoodsId(goodsId));
         return "orderDetail";
     }
 }

@@ -15,5 +15,5 @@ import com.joe.seckilldemo.vo.GoodsVo;
  */
 public interface IOrderService extends IService<Order> {
 
-    Order secKill(User user, GoodsVo goodsVo);
+    Order secKill(User user, Long goodsId);
 }
