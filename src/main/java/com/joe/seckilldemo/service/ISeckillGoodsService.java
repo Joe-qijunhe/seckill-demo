@@ -12,5 +12,5 @@ import com.baomidou.mybatisplus.extension.service.IService;
  * @since 2024-06-25
  */
 public interface ISeckillGoodsService extends IService<SeckillGoods> {
-
+    public void loadAllSeckillGoods();
 }

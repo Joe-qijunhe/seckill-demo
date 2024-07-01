@@ -1,39 +1,41 @@
 package com.joe.seckilldemo.controller;
 
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.joe.seckilldemo.entity.Order;
-import com.joe.seckilldemo.entity.SeckillOrder;
 import com.joe.seckilldemo.entity.User;
-import com.joe.seckilldemo.service.IGoodsService;
 import com.joe.seckilldemo.service.IOrderService;
-import com.joe.seckilldemo.service.ISeckillOrderService;
-import com.joe.seckilldemo.vo.GoodsVo;
+import com.joe.seckilldemo.service.ISeckillGoodsService;
+import com.joe.seckilldemo.vo.RespBean;
 import com.joe.seckilldemo.vo.RespBeanEnum;
+import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
 
 @Controller
 @RequestMapping("/seckill")
-public class SecKillController {
+public class SecKillController implements InitializingBean {
 
-    @Autowired
-    private IGoodsService goodsService;
-    @Autowired
-    private ISeckillOrderService seckillOrderService;
     @Autowired
     private IOrderService orderService;
+    @Autowired
+    private ISeckillGoodsService seckillGoodsService;
 
     @RequestMapping("/doSeckill")
-    public String doSecKill(Model model, User user, Long goodsId) {
+    @ResponseBody
+    public RespBean doSecKill(User user, Long goodsId) {
         if (user == null) {
-            return "login";
+            return RespBean.error(RespBeanEnum.LOGIN_ERROR);
         }
-        model.addAttribute("user", user);
-        Order order = orderService.secKill(user, goodsId);
-        model.addAttribute("order", order);
-        model.addAttribute("goods", goodsService.findGoodsVoByGoodsId(goodsId));
-        return "orderDetail";
+        return orderService.doSekill(user, goodsId);
+    }
+
+    /**
+     * 系统初始化，把秒杀商品库存数量加载到Redis中去
+     *
+     * @throws Exception
+     */
+    @Override
+    public void afterPropertiesSet() throws Exception {
+        seckillGoodsService.loadAllSeckillGoods();
     }
 }
