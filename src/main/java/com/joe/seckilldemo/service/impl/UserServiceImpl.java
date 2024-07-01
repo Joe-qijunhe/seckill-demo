@@ -18,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Primary;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.thymeleaf.util.StringUtils;
 
 /**
@@ -47,7 +48,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         if (user == null) {
             return RespBean.error(RespBeanEnum.LOGIN_ERROR);
         }
-        log.info(MD5Util.formPassToDBPass(password, user.getSalt()));
         if (!MD5Util.formPassToDBPass(password, user.getSalt()).equals(user.getPassword())) {
             return RespBean.error(RespBeanEnum.LOGIN_ERROR);
         }
@@ -71,5 +71,28 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
             CookieUtil.setCookie(request, response, "userTicket", userTicket);
         }
         return user;
+    }
+
+    @Override
+    @Transactional
+    public RespBean updatePassword(String userTicket, String oldPassword, String newPassword) {
+        if (StringUtils.isEmpty(userTicket)) {
+            return null;
+        }
+        User user = (User) redisTemplate.opsForValue().get("user:" + userTicket);
+        if (user == null) {
+            return RespBean.error(RespBeanEnum.LOGIN_ERROR);
+        }
+        if (!MD5Util.formPassToDBPass(oldPassword, user.getSalt()).equals(user.getPassword())) {
+            return RespBean.error(RespBeanEnum.PASSWORD_UPDATE_FAIL);
+        }
+        user.setPassword(MD5Util.inputPassToDBPass(newPassword, user.getSalt()));
+        int result = userMapper.updateById(user);
+        if (1 == result) {
+            //删除Redis
+            redisTemplate.delete("user:" + userTicket);
+            return RespBean.success();
+        }
+        return RespBean.error(RespBeanEnum.PASSWORD_UPDATE_FAIL);
     }
 }

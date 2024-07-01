@@ -1,6 +1,7 @@
 package com.joe.seckilldemo.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.joe.seckilldemo.entity.Order;
 import com.joe.seckilldemo.entity.SeckillGoods;
 import com.joe.seckilldemo.entity.SeckillOrder;
@@ -40,9 +41,9 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     @Override
     public Order secKill(User user, GoodsVo goodsVo) {
         //秒杀商品表减库存
-        SeckillGoods seckillGoods = seckillGoodsService.getOne(new QueryWrapper<SeckillGoods>().eq("goods_id", goodsVo.getId()));
-        seckillGoods.setStockCount(seckillGoods.getStockCount() - 1);
-        seckillGoodsService.updateById(seckillGoods);
+        seckillGoodsService.update(new UpdateWrapper<SeckillGoods>().setSql("stock_count = " + "stock_count-1")
+                .eq("goods_id", goodsVo.getId())
+                .gt("stock_count", 0));
         //生成订单
         Order order = new Order();
         order.setUserId(user.getId());
@@ -50,7 +51,6 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         order.setDeliveryAddrId(0L);
         order.setGoodsName(goodsVo.getGoodsName());
         order.setGoodsCount(1);
-        order.setGoodsPrice(seckillGoods.getSeckillPrice());
         order.setOrderChannel(1);
         order.setStatus(0);
         order.setCreateDate(new Date());
