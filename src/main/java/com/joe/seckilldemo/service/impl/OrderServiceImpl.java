@@ -2,16 +2,15 @@ package com.joe.seckilldemo.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.joe.seckilldemo.entity.Order;
-import com.joe.seckilldemo.entity.SeckillGoods;
-import com.joe.seckilldemo.entity.SeckillOrder;
-import com.joe.seckilldemo.entity.User;
+import com.joe.seckilldemo.entity.*;
+import com.joe.seckilldemo.mapper.GoodsMapper;
 import com.joe.seckilldemo.mapper.OrderMapper;
+import com.joe.seckilldemo.service.IGoodsService;
 import com.joe.seckilldemo.service.IOrderService;
 import com.joe.seckilldemo.service.ISeckillGoodsService;
 import com.joe.seckilldemo.service.ISeckillOrderService;
-import com.joe.seckilldemo.vo.RespBean;
-import com.joe.seckilldemo.vo.RespBeanEnum;
+import com.joe.seckilldemo.vo.*;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Primary;
 import org.springframework.core.io.ClassPathResource;
@@ -42,6 +41,12 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     private ISeckillOrderService seckillOrderService;
     @Autowired
     private StringRedisTemplate stringRedisTemplate;
+    @Autowired
+    private GoodsMapper goodsMapper;
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
+    @Autowired
+    private IGoodsService goodsService;
 
     private static final DefaultRedisScript<Long> SECKILL_SCRIPT;
 
@@ -52,7 +57,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     }
 
     @Override
-    public Order secKill(User user, Long goodsId) {
+    public Order createSeckillOrder(Long userId, Long goodsId) {
         //秒杀商品表减库存
         boolean seckillGoodsResult = seckillGoodsService.update(new UpdateWrapper<SeckillGoods>().setSql("stock_count = " + "stock_count-1")
                 .eq("goods_id", goodsId)
@@ -60,12 +65,13 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         if (!seckillGoodsResult) {
             return null;
         }
+        Goods goods = goodsMapper.selectById(goodsId);
         //生成订单
         Order order = new Order();
-        order.setUserId(user.getId());
+        order.setUserId(userId);
         order.setGoodsId(goodsId);
         order.setDeliveryAddrId(0L);
-        order.setGoodsName("iphone12");
+        order.setGoodsName(goods.getGoodsName());
         order.setGoodsCount(1);
         order.setOrderChannel(1);
         order.setStatus(0);
@@ -73,7 +79,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         orderMapper.insert(order);
         //生成秒杀订单
         SeckillOrder tSeckillOrder = new SeckillOrder();
-        tSeckillOrder.setUserId(user.getId());
+        tSeckillOrder.setUserId(userId);
         tSeckillOrder.setOrderId(order.getId());
         tSeckillOrder.setGoodsId(goodsId);
         seckillOrderService.save(tSeckillOrder);
@@ -81,13 +87,26 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     }
 
     @Override
-    public RespBean doSekill(User user, Long goodsId) {
+    public RespBean doSekill(Long userId, Long goodsId) {
         //1. 执行lua脚本
-        Long result = stringRedisTemplate.execute(SECKILL_SCRIPT, Collections.emptyList(), goodsId.toString(), user.getId().toString());
+        Long result = stringRedisTemplate.execute(SECKILL_SCRIPT, Collections.emptyList(), goodsId.toString(), userId.toString());
         //2. 判断返回值，并返回错误信息
         if (result.intValue() != 0) {
             return result.intValue() == 1 ? RespBean.error(RespBeanEnum.EMPTY_STOCK) : RespBean.error(RespBeanEnum.REPEATE_ERROR);
         }
+        //3. 发送消息到消息队列
+        SeckillMessage message = new SeckillMessage(userId, goodsId);
+        rabbitTemplate.convertAndSend("seckill.topic", "seckill.success", message);
         return RespBean.success();
+    }
+
+    @Override
+    public OrderDeatilVo detail(Long orderId) {
+        Order tOrder = orderMapper.selectById(orderId);
+        GoodsVo goodsVobyGoodsId = goodsService.findGoodsVoByGoodsId(tOrder.getGoodsId());
+        OrderDeatilVo orderDeatilVo = new OrderDeatilVo();
+        orderDeatilVo.setOrder(tOrder);
+        orderDeatilVo.setGoodsVo(goodsVobyGoodsId);
+        return orderDeatilVo;
     }
 }

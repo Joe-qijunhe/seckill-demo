@@ -4,6 +4,7 @@ import com.joe.seckilldemo.entity.Order;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.joe.seckilldemo.entity.User;
 import com.joe.seckilldemo.vo.GoodsVo;
+import com.joe.seckilldemo.vo.OrderDeatilVo;
 import com.joe.seckilldemo.vo.RespBean;
 
 /**
@@ -16,6 +17,7 @@ import com.joe.seckilldemo.vo.RespBean;
  */
 public interface IOrderService extends IService<Order> {
 
-    Order secKill(User user, Long goodsId);
-    RespBean doSekill(User user, Long goodsId);
+    Order createSeckillOrder(Long userId, Long goodsId);
+    RespBean doSekill(Long userId, Long goodsId);
+    OrderDeatilVo detail(Long orderId);
 }
